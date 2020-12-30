@@ -1,29 +1,46 @@
 package com.example.restsample1
 
 import android.os.Bundle
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
-import androidx.lifecycle.lifecycleScope
+import android.view.View
+import android.widget.Button
+import android.widget.TextView
+
+// JSON parse
+import com.beust.klaxon.Klaxon
+
+// Imports for
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
+
+// Networking
 import java.io.BufferedReader
 import java.io.InputStream
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
-import kotlinx.serialization.*
-import kotlinx.serialization.json.Json
+
+// View model
+import androidx.lifecycle.Observer
+import androidx.activity.viewModels
 
 class MainActivity : AppCompatActivity() {
-    private suspend fun getRequest(sUrl: String): String? {
-        val inputStream: InputStream
-        var result: String? = null;
+    var textViewTitle: TextView? = null
+    var textViewDescription: TextView? = null
+    var buttonFetch: Button? = null
+    val viewModel: MainActivityViewModel by viewModels()
 
-        // Create URL
-        val url = URL(sUrl)
+    private fun getRequest(sUrl: String): String? {
+        val inputStream: InputStream
+        var result: String? = null
 
         try {
+            // Create URL
+            val url = URL(sUrl)
+
             // Create HttpURLConnection
             val conn: HttpsURLConnection = url.openConnection() as HttpsURLConnection
 
@@ -48,12 +65,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetch(sUrl: String): BlogInfo? {
         var blogInfo: BlogInfo? = null
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             val result = getRequest(sUrl)
             if (result != null) {
                 try {
                     // Parse result string JSON to data class
-                    blogInfo = Json.decodeFromString<BlogInfo>(result)
+                    blogInfo = Klaxon().parse<BlogInfo>(result)
+
+                    withContext(Dispatchers.Main) {
+                        // Update view model
+                        viewModel.title.value = blogInfo?.title
+                        viewModel.description.value = blogInfo?.description
+                    }
                 }
                 catch(err:Error) {
                     print("Error when parsing JSON: "+err.localizedMessage)
@@ -71,13 +94,22 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         setSupportActionBar(findViewById(R.id.toolbar))
 
-        val blogInfo = fetch("")
-        println(blogInfo)
+        textViewTitle = findViewById(R.id.textview_blog_title)
+        textViewDescription = findViewById(R.id.textview_blog_description)
+        buttonFetch = findViewById(R.id.button_fetch)
 
-        findViewById<FloatingActionButton>(R.id.fab).setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
-        }
+        buttonFetch?.setOnClickListener(View.OnClickListener {
+            // Launch get request
+            fetch("https://raw.githubusercontent.com/justmobiledev/android-kotlin-rest-1/main/support/data/bloginfo.json")
+        })
+
+        viewModel.title.observe(this, Observer {
+            textViewTitle?.text = it
+        })
+
+        viewModel.description.observe(this, Observer {
+            textViewDescription?.text = it
+        })
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
