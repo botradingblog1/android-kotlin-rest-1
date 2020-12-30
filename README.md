@@ -1,4 +1,4 @@
-# Android Sample App for Exploring Sensors (Kotlin)
+# Android Sample app for making REST calls with HttpsURLConnection and Kotlin Coroutines (Kotlin)
 
 ## Overview
 This project is a sample app for exploring device sensors for my [blog post on justmobiledev.com](http://justmobiledev.com/exploring-device-sensors-with-kotlin/).
